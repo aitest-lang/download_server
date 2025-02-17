@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Media Player</title>
+    <style>
+        .media-list {
+            margin: 20px;
+        }
+        .media-item {
+            margin-bottom: 10px;
+        }
+        video, audio {
+            width: 100%;
+            max-width: 640px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Media Player</h1>
+    <div class="media-list">
+        {% if media_files %}
+            <p>Select a file to play:</p>
+            {% for file in media_files %}
+                <div class="media-item">
+                    <strong>{{ file }}</strong><br>
+                    {% if file.lower().endswith(('.mp4', '.webm', '.ogg')) %}
+                        <video controls>
+                            <source src="/play/{{ file }}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    {% elif file.lower().endswith(('.mp3', '.wav')) %}
+                        <audio controls>
+                            <source src="/play/{{ file }}" type="audio/mpeg">
+                            Your browser does not support the audio tag.
+                        </audio>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No media files available.</p>
+        {% endif %}
+    </div>
+    <p><a href="/">Back to Home</a></p>
+</body>
+</html>
