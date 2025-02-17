@@ -4,6 +4,7 @@ import libtorrent as lt
 import time
 import threading
 import requests
+from concurrent.futures import ThreadPoolExecutor
 
 app = Flask(__name__)
 
@@ -17,12 +18,17 @@ torrent_progress = {}
 # Time after which files should be deleted (in seconds)
 FILE_LIFETIME = 24 * 60 * 60  # 24 hours
 
+# Thread pool for background tasks
+executor = ThreadPoolExecutor(max_workers=5)  # Define executor globally
+
 # Set debug mode based on environment variable
 DEBUG = os.getenv("FLASK_ENV") == "development"
+
 
 @app.route("/", methods=["GET"])
 def home():
     return render_template("home.html")
+
 
 @app.route("/direct-download", methods=["GET", "POST"])
 def direct_download():
@@ -31,32 +37,33 @@ def direct_download():
         if not file_url:
             return "Please provide a valid file URL.", 400
 
-        try:
-            # Download the file from the provided URL
-            response = requests.get(file_url, stream=True)
-            response.raise_for_status()
-
-            # Extract the file name from the URL
-            file_name = os.path.basename(file_url.split("?")[0])
-            file_path = os.path.join(DOWNLOAD_DIR, file_name)
-
-            # Save the file locally
-            with open(file_path, "wb") as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-
-            # Determine the MIME type based on the file extension
-            if file_name.lower().endswith((".mp4", ".webm", ".ogg")):
-                return render_template("play.html", file_path=f"/play/{file_name}")
-            elif file_name.lower().endswith((".mp3", ".wav", ".ogg")):
-                return render_template("play.html", file_path=f"/play/{file_name}")
-            else:
-                return render_template("download.html", file_path=f"/download/{file_name}")
-
-        except Exception as e:
-            return f"Error processing the file: {str(e)}", 500
+        # Submit the download task to the thread pool
+        future = executor.submit(download_file_in_background, file_url)
+        file_name = os.path.basename(file_url.split("?")[0])
+        file_path = f"/play/{file_name}" if file_name.lower().endswith((".mp4", ".webm", ".ogg", ".mp3", ".wav")) else f"/download/{file_name}"
+        return render_template("processing.html", file_path=file_path)
 
     return render_template("direct_download.html")
+
+
+def download_file_in_background(file_url):
+    try:
+        # Download the file from the provided URL
+        response = requests.get(file_url, stream=True)
+        response.raise_for_status()
+
+        # Extract the file name from the URL
+        file_name = os.path.basename(file_url.split("?")[0])
+        file_path = os.path.join(DOWNLOAD_DIR, file_name)
+
+        # Save the file locally
+        with open(file_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
+
+        print(f"File downloaded successfully: {file_path}")
+    except Exception as e:
+        print(f"Error downloading file: {str(e)}")
 
 
 @app.route("/torrent-download", methods=["GET", "POST"])
@@ -112,6 +119,16 @@ def play_file(filename):
     # Serve the file for playback
     return send_file(file_path)
 
+
+@app.route("/media-player", methods=["GET"])
+def media_player():
+    # List all playable media files in the downloads directory
+    media_files = []
+    for filename in os.listdir(DOWNLOAD_DIR):
+        if filename.lower().endswith((".mp4", ".webm", ".ogg", ".mp3", ".wav")):
+            media_files.append(filename)
+
+    return render_template("media_player.html", media_files=media_files)
 
 @app.route("/download/<filename>")
 def download_file(filename):
