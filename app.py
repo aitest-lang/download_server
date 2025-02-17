@@ -68,10 +68,28 @@ def torrent_download():
 
         # Check if it's a torrent file or magnet link
         if file_url.endswith(".torrent") or file_url.startswith("magnet:?"):
+            # Generate the info_hash for the torrent/magnet link
+            if file_url.startswith("magnet:?"):
+                # Extract info_hash from magnet link
+                import re
+                match = re.search(r"xt=urn:btih:([a-zA-Z0-9]+)", file_url)
+                if not match:
+                    return "Invalid magnet link.", 400
+                info_hash = match.group(1)
+            else:
+                # Download the .torrent file to extract info_hash
+                response = requests.get(file_url)
+                torrent_file = os.path.join(DOWNLOAD_DIR, "temp.torrent")
+                with open(torrent_file, "wb") as f:
+                    f.write(response.content)
+                info = lt.torrent_info(torrent_file)
+                info_hash = str(info.info_hash())
+
             # Start torrent download in a separate thread
-            thread = threading.Thread(target=download_torrent, args=(file_url,))
-            thread.start()
-            return render_template("progress.html", file_url=file_url)
+            executor.submit(download_torrent, file_url)
+
+            # Pass the info_hash to the progress page
+            return render_template("progress.html", info_hash=info_hash)
         else:
             return "Unsupported file type. Please provide a torrent file or magnet link.", 400
 

@@ -6,7 +6,7 @@
     <title>Download Progress</title>
     <script>
         function updateProgress() {
-            const infoHash = "{{ file_url | hash }}"; // Extract info_hash from the backend
+            const infoHash = "{{ info_hash }}"; // Use the info_hash passed from the backend
             fetch(`/progress/${infoHash}`)
                 .then(response => response.json())
                 .then(data => {
