@@ -167,10 +167,13 @@ def media_player():
         if not file_url:
             return "Please provide a valid file URL.", 400
 
-        # Submit the download task to the thread pool
-        future = executor.submit(download_file_in_background, file_url)
+        # Extract the file name from the URL
         file_name = os.path.basename(file_url.split("?")[0])
-        file_path = f"/play/{file_name}" if file_name.lower().endswith((".mp4", ".webm", ".ogg", ".mp3", ".wav")) else f"/download/{file_name}"
+        file_path = os.path.join(DOWNLOAD_DIR, file_name)
+
+        # Submit the download task to the thread pool
+        executor.submit(download_and_stream, file_url, file_path)
+        return render_template("processing.html", file_path=f"/play/{file_name}")
 
     # List all playable media files in the downloads directory
     media_files = []
@@ -180,14 +183,40 @@ def media_player():
     return render_template("media_player.html", media_files=media_files)
 
 
+def download_and_stream(file_url, file_path):
+    try:
+        # Download the file from the provided URL
+        response = requests.get(file_url, stream=True)
+        response.raise_for_status()
+
+        total_size = int(response.headers.get("content-length", 0))
+        downloaded_size = 0
+
+        # Save the file locally in chunks
+        with open(file_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+                    downloaded_size += len(chunk)
+                    progress = (downloaded_size / total_size) * 100 if total_size > 0 else 0
+                    socketio.emit("download_progress", {"progress": progress})  # Emit progress via WebSocket
+        print(f"File downloaded successfully: {file_path}")
+    except Exception as e:
+        print(f"Error downloading file: {str(e)}")
+
 @app.route("/play/<filename>")
 def play_file(filename):
     file_path = os.path.join(DOWNLOAD_DIR, filename)
     if not os.path.exists(file_path):
         abort(404)
 
-    # Serve the file for playback
-    return send_file(file_path)
+    # Stream the file using Flask's send_file with partial content support
+    def generate():
+        with open(file_path, "rb") as f:
+            while chunk := f.read(8192):
+                yield chunk
+
+    return Response(generate(), mimetype="video/mp4")
 
 
 @app.route("/download/<filename>")
