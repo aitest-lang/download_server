@@ -171,7 +171,6 @@ def media_player():
         future = executor.submit(download_file_in_background, file_url)
         file_name = os.path.basename(file_url.split("?")[0])
         file_path = f"/play/{file_name}" if file_name.lower().endswith((".mp4", ".webm", ".ogg", ".mp3", ".wav")) else f"/download/{file_name}"
-        return render_template("processing.html", file_path=file_path)
 
     # List all playable media files in the downloads directory
     media_files = []
