@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Play Media</title>
+</head>
+<body>
+    <h1>Media Player</h1>
+
+    <!-- Video Player -->
+    <video controls width="640" height="360" {% if '.mp3' in file_path or '.wav' in file_path %}hidden{% endif %}>
+        <source src="{{ file_path }}" type="video/mp4">
+        Your browser does not support the video tag.
+    </video>
+
+    <!-- Audio Player -->
+    <audio controls {% if '.mp4' in file_path or '.webm' in file_path %}hidden{% endif %}>
+        <source src="{{ file_path }}" type="audio/mpeg">
+        Your browser does not support the audio tag.
+    </audio>
+
+    <!-- Download Link -->
+    <p><a href="/download/{{ file_path.split('/')[-1] }}">Download File</a></p>
+</body>
+</html>
