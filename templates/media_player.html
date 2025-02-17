@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Media Player</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <style>
         .media-list {
             margin: 20px;
@@ -15,6 +16,16 @@
             width: 100%;
             max-width: 640px;
         }
+        #progress-bar-container {
+            width: 100%;
+            background-color: #f3f3f3;
+            margin-top: 10px;
+        }
+        #progress-bar {
+            height: 30px;
+            background-color: #4caf50;
+            width: 0%;
+        }
     </style>
 </head>
 <body>
@@ -24,6 +35,12 @@
         <input type="url" id="file_url" name="file_url" required>
         <button type="submit">Submit</button>
     </form>
+
+    <!-- Progress Bar -->
+    <div id="progress-bar-container">
+        <div id="progress-bar"></div>
+    </div>
+
     <div class="media-list">
         {% if media_files %}
             <p>Select a file to play:</p>
@@ -48,5 +65,14 @@
         {% endif %}
     </div>
     <p><a href="/">Back to Home</a></p>
+
+    <script>
+        const socket = io();
+
+        // Listen for download progress updates
+        socket.on("download_progress", (data) => {
+            document.getElementById("progress-bar").style.width = data.progress + "%";
+        });
+    </script>
 </body>
 </html>
