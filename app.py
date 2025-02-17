@@ -181,15 +181,27 @@ def download_torrent(file_url):
 def cleanup_old_files():
     """
     Deletes files in the DOWNLOAD_DIR that are older than FILE_LIFETIME.
+    Also deletes files if the disk is full.
     """
     current_time = time.time()
-    for filename in os.listdir(DOWNLOAD_DIR):
-        file_path = os.path.join(DOWNLOAD_DIR, filename)
-        if os.path.isfile(file_path):
-            file_age = current_time - os.path.getmtime(file_path)  # Age of the file in seconds
-            if file_age > FILE_LIFETIME:
-                print(f"Deleting old file: {file_path}")
-                os.remove(file_path)
+
+    # Get all files sorted by modification time (oldest first)
+    files = [
+        os.path.join(DOWNLOAD_DIR, f)
+        for f in os.listdir(DOWNLOAD_DIR)
+        if os.path.isfile(os.path.join(DOWNLOAD_DIR, f))
+    ]
+    files.sort(key=lambda x: os.path.getmtime(x))
+
+    for file_path in files:
+        # Delete files older than FILE_LIFETIME
+        file_age = current_time - os.path.getmtime(file_path)
+        if file_age > FILE_LIFETIME:
+            print(f"Deleting old file: {file_path}")
+            os.remove(file_path)
+
+    # Check disk usage again after deleting old files
+    cleanup_if_disk_full()
 
 
 def start_cleanup_task():
