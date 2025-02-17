@@ -5,6 +5,7 @@ import time
 import threading
 import requests
 from concurrent.futures import ThreadPoolExecutor
+import shutil
 
 app = Flask(__name__)
 
@@ -178,6 +179,32 @@ def download_torrent(file_url):
     print(f"Torrent download complete: {info_hash}")
 
 
+DISK_USAGE_THRESHOLD = 90
+
+def cleanup_if_disk_full():
+    """
+    Checks the disk usage and deletes old files if the disk is full.
+    """
+    total, used, free = shutil.disk_usage("/")
+    disk_usage_percent = (used / total) * 100
+
+    print(f"Disk usage: {disk_usage_percent:.2f}%")
+
+    if disk_usage_percent > DISK_USAGE_THRESHOLD:
+        print("Disk usage exceeded threshold. Deleting old files...")
+        cleanup_old_files()
+
+def start_cleanup_task():
+    """
+    Starts a periodic task to clean up old files and check disk usage.
+    """
+    cleanup_old_files()  # Clean up old files immediately on startup
+    cleanup_if_disk_full()  # Check disk usage and clean up if necessary
+
+    # Schedule the next cleanup after FILE_LIFETIME seconds
+    threading.Timer(FILE_LIFETIME, start_cleanup_task).start()
+
+
 def cleanup_old_files():
     """
     Deletes files in the DOWNLOAD_DIR that are older than FILE_LIFETIME.
@@ -204,20 +231,6 @@ def cleanup_old_files():
     cleanup_if_disk_full()
 
 
-def start_cleanup_task():
-    """
-    Starts a periodic task to clean up old files.
-    """
-    cleanup_old_files()  # Run cleanup immediately on startup
-    # Schedule the next cleanup after FILE_LIFETIME seconds
-    threading.Timer(FILE_LIFETIME, start_cleanup_task).start()
-
-
-import shutil
-
-# Threshold for disk usage (in percentage)
-DISK_USAGE_THRESHOLD = 90  # Delete files if disk usage exceeds 90%
-
 def cleanup_if_disk_full():
     """
     Checks the disk usage and deletes old files if the disk is full.
@@ -232,8 +245,18 @@ def cleanup_if_disk_full():
         cleanup_old_files()
 
 
-# Start the cleanup task when the Flask app starts
-start_cleanup_task()
+def start_cleanup_task():
+    """
+    Starts a periodic task to clean up old files and check disk usage.
+    """
+    cleanup_old_files()  # Clean up old files immediately on startup
+    cleanup_if_disk_full()  # Check disk usage and clean up if necessary
+
+    # Schedule the next cleanup after FILE_LIFETIME seconds
+    threading.Timer(FILE_LIFETIME, start_cleanup_task).start()
+
+
+
 
 
 if __name__ == "__main__":
