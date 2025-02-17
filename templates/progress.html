@@ -4,24 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Download Progress</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
     <script>
-        function updateProgress() {
-            const infoHash = "{{ info_hash }}"; // Use the info_hash passed from the backend
-            fetch(`/progress/${infoHash}`)
-                .then(response => response.json())
-                .then(data => {
-                    document.getElementById("progress-bar").style.width = data.progress + "%";
-                    document.getElementById("status").innerText = data.status;
+        const socket = io();
 
-                    if (data.progress < 100) {
-                        setTimeout(updateProgress, 1000); // Update every second
-                    } else {
-                        document.getElementById("status").innerText = "Download Complete!";
-                    }
-                });
-        }
+        // Request torrent progress updates
+        const infoHash = "{{ info_hash }}";
+        socket.emit("get_torrent_progress", infoHash);
 
-        window.onload = updateProgress;
+        // Listen for torrent progress updates
+        socket.on("torrent_progress", (data) => {
+            document.getElementById("progress-bar").style.width = data.progress + "%";
+            document.getElementById("status").innerText = data.status || `Downloading... ${data.progress.toFixed(2)}%`;
+        });
     </script>
 </head>
 <body>
