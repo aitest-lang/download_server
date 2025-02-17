@@ -213,6 +213,25 @@ def start_cleanup_task():
     threading.Timer(FILE_LIFETIME, start_cleanup_task).start()
 
 
+import shutil
+
+# Threshold for disk usage (in percentage)
+DISK_USAGE_THRESHOLD = 90  # Delete files if disk usage exceeds 90%
+
+def cleanup_if_disk_full():
+    """
+    Checks the disk usage and deletes old files if the disk is full.
+    """
+    total, used, free = shutil.disk_usage("/")
+    disk_usage_percent = (used / total) * 100
+
+    print(f"Disk usage: {disk_usage_percent:.2f}%")
+
+    if disk_usage_percent > DISK_USAGE_THRESHOLD:
+        print("Disk usage exceeded threshold. Deleting old files...")
+        cleanup_old_files()
+
+
 # Start the cleanup task when the Flask app starts
 start_cleanup_task()
 
